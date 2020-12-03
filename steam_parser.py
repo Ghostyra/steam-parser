@@ -21,19 +21,23 @@ class SteamParser:
                    "Reviews summary", "Positive percent", "Price", "Languages", "Achievements count",
                    "Genres", "Steam categories"]
 
-        with open("steam_data.csv", "w", newline="\n") as f:
+        with open("steam_data.csv", "w", encoding='utf-8', newline="\n") as f:
             writer = csv.writer(f)
             writer.writerow(headers)
-
             for link in links:
                 row = self.parse_data(link)
-                writer.writerow(row)
+                if row:
+                    writer.writerow(row)
 
     @staticmethod
     def parse_data(link):
         from creating_soup import create_soup
 
         page_soup = create_soup(link)
+
+        # If game not released
+        if page_soup.find(attrs={"class": "not_yet"}):
+            return 0
 
         # Parse title
         title = page_soup.find("div", attrs={"class": "apphub_AppName"}).text
@@ -54,7 +58,11 @@ class SteamParser:
             next_sibling.next_sibling.find_all("span")
         game_review_summary = review_spans[0].text.strip()
         reviews_count = review_spans[1].text.strip().strip("()")
-        percent = re.findall(r"[0-9]+%", review_spans[2].text)[0]
+        # Check for trash-span
+        if review_spans[2].text == "*":
+            percent = re.findall(r"[0-9]+%", review_spans[3].text)[0]
+        else:
+            percent = re.findall(r"[0-9]+%", review_spans[2].text)[0]
 
         # Get price block
         price_panel = page_soup.find_all("div", attrs={"class": "game_purchase_action"})
@@ -78,9 +86,9 @@ class SteamParser:
 
         # Parse achievements count if they are
         achievements_count = 0
-        achievements_block = page_soup.find("div", attrs={"id": "achievement_block"})
+        achievements_block = page_soup.find("div", attrs={"class": "communitylink_achievement_images"})
         if achievements_block:
-            achievements_count = int(re.findall(r"\d+", achievements_block.find("div").text)[0])
+            achievements_count = int(re.findall(r"\d+", achievements_block.previous_sibling.previous_sibling.text)[0])
 
         # Parse genres without devs and publisher in this block
         genres_table = page_soup.find("div", attrs={"class": "details_block"})

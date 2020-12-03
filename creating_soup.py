@@ -19,6 +19,7 @@ def get_links(url):
 
     links = []
     soup = BeautifulSoup(driver.page_source, "html.parser")
+    driver.close()
 
     div = soup.find("div", attrs={"id": "search_resultsRows"})
     for a in div.find_all("a"):
