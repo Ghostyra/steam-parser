@@ -51,24 +51,49 @@ class SteamParser:
         # Parse devs and publisher
         dev_rows = user_reviews.find_all("div", attrs={"class": "dev_row"})
         dev = [word.text for word in dev_rows[0].find_all("a")]
-        publisher = [word.text for word in dev_rows[1].find_all("a")]
+        try:
+            publisher = [word.text for word in dev_rows[1].find_all("a")]
+        # No publisher
+        except IndexError:
+            publisher = "-"
 
         # Parse reviews count, text-value, percent of positive review
         review_spans = user_reviews.find("div", attrs={"class": "subtitle column all"}). \
             next_sibling.next_sibling.find_all("span")
-        game_review_summary = review_spans[0].text.strip()
-        reviews_count = review_spans[1].text.strip().strip("()")
-        # Check for trash-span
-        if review_spans[2].text == "*":
-            percent = re.findall(r"[0-9]+%", review_spans[3].text)[0]
+        # For case when reviews not enough
+        if len(review_spans) == 2:
+            reviews_count = re.findall(r"[0-9]", review_spans[0].text)[0]
+            game_review_summary = "-"
+            percent = "-"
+        elif len(review_spans) == 0:
+            reviews_count = "-"
+            game_review_summary = "-"
+            percent = "-"
         else:
-            percent = re.findall(r"[0-9]+%", review_spans[2].text)[0]
+            game_review_summary = review_spans[0].text.strip()
+            reviews_count = review_spans[1].text.strip().strip("()")
+            # Check for trash-span like span with *
+            if review_spans[2].text == "*":
+                percent = re.findall(r"[0-9]+%", review_spans[3].text)[0]
+
+            else:
+                try:
+                    percent = re.findall(r"[0-9]+%", review_spans[2].text)[0]
+                except IndexError:
+                    reviews_count = re.findall(r"[0-9]", review_spans[0].text)[0]
+                    game_review_summary = "-"
+                    percent = "-"
 
         # Get price block
         price_panel = page_soup.find_all("div", attrs={"class": "game_purchase_action"})
 
+        # If game doesnt have price panel
+        if not price_panel:
+            return 0
+
         # Ignore demo
-        if page_soup.find("div", attrs={"class": "game_area_purchase_game demo_above_purchase"}):
+        demo_ver = page_soup.find("div", attrs={"class": "game_area_purchase_game demo_above_purchase"})
+        if demo_ver:
             price_panel = price_panel[1]
         else:
             price_panel = price_panel[0]
@@ -77,7 +102,11 @@ class SteamParser:
         if price_panel_discount:
             price = price_panel_discount.text
         else:
-            price = price_panel.find("div", attrs={"class": "game_purchase_price price"}).text.strip()
+            try:
+                price = price_panel.find("div", attrs={"class": "game_purchase_price price"}).text.strip()
+            # Free-to-play - no price
+            except AttributeError:
+                price = "Free"
 
         # Parse languages
         languages_table = page_soup.find("table", attrs={"class": "game_language_options"})
@@ -100,6 +129,9 @@ class SteamParser:
         categories_table = page_soup.find("div", attrs={"id": "category_block"})
         categories = [re.sub(r"\s+", " ", a.text).strip() for a in
                       categories_table.find_all("a", attrs={"class": "name"})]
+        # Check VR
+        if page_soup.find("div", attrs={"class": "block_title vrsupport"}):
+            categories.append("VR support")
 
         return [title, date, to_str_with_sep(dev, ","), to_str_with_sep(publisher, ","),
                 reviews_count, game_review_summary, percent, price, to_str_with_sep(languages, ","),

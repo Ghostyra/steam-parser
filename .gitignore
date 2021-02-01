@@ -131,4 +131,5 @@ dmypy.json
 .pyre/
 
 # csv
+.csv
 steam_data.csv.csv
