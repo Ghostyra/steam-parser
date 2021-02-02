@@ -6,6 +6,16 @@ def to_str_with_sep(arr, sep):
     return sep.join(str(x) for x in arr)
 
 
+class DataCreator:
+    def __init__(self, url):
+        from creating_soup import get_links
+
+        self.links = get_links(url)
+        self.headers = ["Title", "Release date", "Developer", "Publisher", "Reviews count",
+                   "Reviews summary", "Positive percent", "Price", "Languages", "Achievements count",
+                   "Genres", "Steam categories"]
+
+
 class SteamParser:
     def __init__(self):
         self.url = ""
@@ -29,8 +39,7 @@ class SteamParser:
                 if row:
                     writer.writerow(row)
 
-    @staticmethod
-    def parse_data(link):
+    def parse_data(self, link):
         from creating_soup import create_soup
 
         page_soup = create_soup(link)
@@ -60,7 +69,7 @@ class SteamParser:
         # Parse reviews count, text-value, percent of positive review
         review_spans = user_reviews.find("div", attrs={"class": "subtitle column all"}). \
             next_sibling.next_sibling.find_all("span")
-        # For case when reviews not enough
+        # For case when reviews not enough or they don`t exist
         if len(review_spans) == 2:
             reviews_count = re.findall(r"[0-9]", review_spans[0].text)[0]
             game_review_summary = "-"
