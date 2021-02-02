@@ -3,20 +3,30 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
-# Get all game-links from page
+# Get all game-links from the page
 def get_links(url):
     chrome_options = Options()
     chrome_options.add_argument("--user-data-dir=chrome-data")
     driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
     driver.get(url)
 
+    # Wait new window in browser
+    try:
+        element = WebDriverWait(driver, 10000).until(
+            EC.number_of_windows_to_be(2)
+        )
+    finally:
+        pass
+
     len_page = len(driver.page_source)
     while True:
         driver.execute_script("window.scrollTo(0,document.body.scrollHeight)")
-        time.sleep(2)
         new_len_page = len(driver.page_source)
+        time.sleep(2)
         if new_len_page == len_page:
             break
         len_page = new_len_page
